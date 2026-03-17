@@ -300,7 +300,7 @@ export default function Home() {
   }, [queuePrompt, closeMobileSidebar]);
 
   return (
-    <div className={`flex h-[100dvh] overflow-hidden md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}>
+    <div className={`flex h-[100svh] overflow-hidden md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}>
       <aside
         className={`hidden h-full min-h-0 w-[300px] flex-col border-r md:flex ${
           isLightMode ? "border-zinc-200 bg-white" : "border-white/10 bg-[#171717]"
