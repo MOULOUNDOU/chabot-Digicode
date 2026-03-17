@@ -152,6 +152,20 @@ export function SalesChat({
     handleReset();
   }, [resetSignal]);
 
+  const stabilizeViewportOnFocus = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+    });
+
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 60);
+  }, []);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     submitMessage(input);
@@ -196,6 +210,7 @@ export function SalesChat({
             type="text"
             value={input}
             onChange={(event) => setInput(event.target.value)}
+            onFocus={stabilizeViewportOnFocus}
             maxLength={MAX_USER_MESSAGE_LENGTH}
             placeholder="Poser une question"
             className={`h-11 flex-1 border-none bg-transparent px-1 text-[16px] outline-none sm:text-sm ${
@@ -254,7 +269,7 @@ export function SalesChat({
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {hasConversation ? (
         <>
-          <div className="touch-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-4 pb-36 pt-6 sm:px-6">
+          <div className="mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-hidden px-4 pb-36 pt-6 sm:touch-scroll sm:overflow-y-auto sm:px-6">
             <div className="space-y-4 sm:space-y-5">
               {messages.map((message) => (
                 <ChatBubble key={message.id} role={message.role} content={message.content} themeMode={themeMode} />

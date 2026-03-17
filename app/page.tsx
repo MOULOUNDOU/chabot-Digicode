@@ -133,7 +133,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 pb-4 pt-2">
+      <div className="min-h-0 flex-1 space-y-4 overflow-hidden px-3 pb-4 pt-2 md:overflow-y-auto">
         <button
           type="button"
           onClick={onNewChat}
@@ -231,7 +231,6 @@ export default function Home() {
   const [queuedPrompt, setQueuedPrompt] = useState<SidebarPrompt | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState("100svh");
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
       return "dark";
@@ -260,30 +259,6 @@ export default function Home() {
     document.documentElement.dataset.theme = themeMode;
     window.localStorage.setItem("digicode-theme", themeMode);
   }, [themeMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const updateViewportHeight = () => {
-      const viewport = window.visualViewport;
-      const nextHeight = viewport?.height ?? window.innerHeight;
-      setViewportHeight(`${Math.round(nextHeight)}px`);
-    };
-
-    updateViewportHeight();
-
-    window.addEventListener("resize", updateViewportHeight);
-    window.visualViewport?.addEventListener("resize", updateViewportHeight);
-    window.visualViewport?.addEventListener("scroll", updateViewportHeight);
-
-    return () => {
-      window.removeEventListener("resize", updateViewportHeight);
-      window.visualViewport?.removeEventListener("resize", updateViewportHeight);
-      window.visualViewport?.removeEventListener("scroll", updateViewportHeight);
-    };
-  }, []);
 
   useEffect(() => {
     if (!mobileSidebarOpen) {
@@ -326,8 +301,7 @@ export default function Home() {
 
   return (
     <div
-      style={{ height: viewportHeight }}
-      className={`flex overflow-hidden md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}
+      className={`fixed inset-0 flex h-[100svh] w-full overflow-hidden md:static md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}
     >
       <aside
         className={`hidden h-full min-h-0 w-[300px] flex-col border-r md:flex ${
