@@ -308,7 +308,7 @@ export function SalesChat({
           </div>
         </>
       ) : (
-        <div className="touch-scroll flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-4 pb-20 pt-16 sm:justify-center sm:px-6 sm:pt-0">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-hidden px-4 pb-20 pt-16 sm:touch-scroll sm:justify-center sm:overflow-y-auto sm:px-6 sm:pt-0">
           <h1
             className={`text-center text-3xl font-semibold tracking-tight sm:text-5xl ${
               isLightMode ? "text-zinc-800" : "text-zinc-100"
