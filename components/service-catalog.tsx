@@ -1,9 +1,10 @@
+import { BRAND_NAME } from "@/lib/contact";
 import { DIGICODE_SERVICES } from "@/lib/services";
 
 export function ServiceCatalog() {
   return (
     <section className="card-elevated rounded-3xl p-5 sm:p-6">
-      <h2 className="text-lg font-bold text-slate-900">Nos services Digicode</h2>
+      <h2 className="text-lg font-bold text-slate-900">Nos services {BRAND_NAME}</h2>
       <p className="mt-1 text-sm text-slate-600">Offres claires, accompagnement pro et réponse rapide.</p>
 
       <div className="mt-4 space-y-3">

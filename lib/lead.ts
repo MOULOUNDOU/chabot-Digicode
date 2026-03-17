@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/contact";
 import { LeadData, ServiceKey } from "@/types/chat";
 import { getServicePriceLabel, SERVICE_BY_KEY } from "@/lib/services";
 import { cleanText, sanitizeEmail, sanitizeWhatsappNumber } from "@/lib/sanitize";
@@ -399,7 +400,7 @@ export function buildWhatsappMessage(lead: LeadData, summary?: string): string {
     .map((line) => `- ${line}`);
 
   return [
-    "Bonjour Digicode, voici ma demande :",
+    `Bonjour ${BRAND_NAME}, voici ma demande :`,
     "",
     "Informations client",
     `- Nom : ${lead.clientName || "Non renseigné"}`,

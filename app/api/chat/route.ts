@@ -6,6 +6,7 @@ import {
   isSongOrderBlockedByPayment,
   mergeLeadData,
 } from "@/lib/lead";
+import { BRAND_NAME, PAYMENT_DETAILS_SENTENCE } from "@/lib/contact";
 import { buildSalesSystemPrompt } from "@/lib/prompt";
 import { cleanText } from "@/lib/sanitize";
 import { detectServiceFromText, DIGICODE_SERVICES } from "@/lib/services";
@@ -30,7 +31,7 @@ const TRAINING_PACK_SENTENCE =
   "Le pack de formation sur la création de vidéos avec Veo 3 coûte 2500 F. C’est une formation complète déjà enregistrée. Après paiement, nous vous envoyons directement le pack sur votre WhatsApp.";
 const TRAINING_NOT_LIVE_SENTENCE = "Ce n’est pas une formation en direct, c’est un pack déjà prêt.";
 const TRAINING_PAYMENT_FLOW_SENTENCE =
-  "L’envoi se fait après paiement et le pack sera transmis sur votre WhatsApp.";
+  `L’envoi se fait après paiement et le pack sera transmis sur votre WhatsApp. ${PAYMENT_DETAILS_SENTENCE}`;
 const ALIBABA_TRAINING_SENTENCE =
   "La formation Alibaba, achat en Chine et export depuis l’Afrique coûte 75000 F, avec un transitaire offert à la fin de la formation.";
 const CHATBOT_CREATION_SENTENCE =
@@ -334,7 +335,7 @@ export async function POST(request: Request) {
         { role: "system", content: buildSalesSystemPrompt() },
         {
           role: "system",
-          content: `Contexte de conversation Digicode (JSON): ${JSON.stringify(contextPayload)}`,
+          content: `Contexte de conversation ${BRAND_NAME} (JSON): ${JSON.stringify(contextPayload)}`,
         },
         ...modelMessages,
       ],
@@ -348,7 +349,7 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
           "HTTP-Referer": origin,
-          "X-Title": "Digicode Assistant",
+          "X-Title": `${BRAND_NAME} Assistant`,
         },
         body: JSON.stringify(
           useJsonMode ? { ...basePayload, response_format: { type: "json_object" } } : basePayload,
@@ -528,7 +529,7 @@ export async function POST(request: Request) {
 
     if (readyForWhatsapp) {
       const whatsappGuidance =
-        "Votre demande est prête. Cliquez sur le bouton de soumission WhatsApp pour l’envoyer à Digicode.";
+        `Votre demande est prête. Cliquez sur le bouton de soumission WhatsApp pour l’envoyer à ${BRAND_NAME}.`;
       if (!reply.toLowerCase().includes("whatsapp")) {
         if (reply.length > maxReplyChars - whatsappGuidance.length - 2) {
           reply = whatsappGuidance;

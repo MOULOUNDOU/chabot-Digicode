@@ -19,6 +19,12 @@ import {
 } from "lucide-react";
 import { SalesChat, SidebarPrompt } from "@/components/sales-chat";
 import { useVisualViewportHeight } from "@/hooks/use-visual-viewport-height";
+import {
+  BRAND_NAME,
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_WHATSAPP_LINK,
+  PAYMENT_METHODS_LABEL,
+} from "@/lib/contact";
 
 const QUICK_ACTIONS = [
   {
@@ -85,8 +91,6 @@ const QUICK_ACTIONS = [
   },
 ];
 
-const CONTACT_WHATSAPP_LABEL = "+221 77 726 94 84";
-const CONTACT_WHATSAPP_LINK = "https://wa.me/221777269484";
 const THEME_STORAGE_KEY = "digicode-theme";
 
 type ThemeMode = "dark" | "light";
@@ -175,13 +179,13 @@ function SidebarContent({
         <div className="flex items-center gap-2">
           <Image
             src="/logo-digicode.PNG"
-            alt="Logo Digicode"
+            alt={`Logo ${BRAND_NAME}`}
             width={24}
             height={24}
             className="h-6 w-6 rounded-full object-cover"
             priority
           />
-          <span className="text-sm font-semibold">Digicode</span>
+          <span className="text-sm font-semibold">{BRAND_NAME}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -213,7 +217,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-hidden px-3 pb-4 pt-2 md:overflow-y-auto">
+      <div className="touch-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-3 pb-4 pt-2">
         <button
           type="button"
           onClick={onNewChat}
@@ -270,7 +274,7 @@ function SidebarContent({
               isLightMode ? "text-zinc-500" : "text-zinc-400"
             }`}
           >
-            Contact direct
+            Telephone / paiement
           </p>
           <a
             href={CONTACT_WHATSAPP_LINK}
@@ -284,10 +288,13 @@ function SidebarContent({
           >
             <span className="inline-flex items-center gap-2">
               <WhatsAppIcon className="h-4 w-4 text-emerald-500" />
-              WhatsApp
+              WhatsApp / appel
             </span>
-            <span className={`text-xs ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>{CONTACT_WHATSAPP_LABEL}</span>
+            <span className={`text-xs ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>{CONTACT_PHONE_DISPLAY}</span>
           </a>
+          <p className={`mt-2 text-xs ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
+            Paiement: {PAYMENT_METHODS_LABEL}
+          </p>
         </section>
       </div>
 
@@ -360,7 +367,7 @@ export default function Home() {
   }, [resetChatToBase, closeMobileSidebar]);
 
   const handleAdvisor = useCallback(() => {
-    queuePrompt("Je veux parler à un conseiller Digicode pour finaliser ma demande.");
+    queuePrompt(`Je veux parler à un conseiller ${BRAND_NAME} pour finaliser ma demande.`);
     closeMobileSidebar();
   }, [queuePrompt, closeMobileSidebar]);
 
@@ -377,10 +384,10 @@ export default function Home() {
           isLightMode={isLightMode}
           onCloseMobileSidebar={closeMobileSidebar}
           onNewChat={handleNewChat}
-          onQuickAction={handleQuickAction}
-          onAdvisor={handleAdvisor}
-          onToggleTheme={toggleTheme}
-        />
+              onQuickAction={handleQuickAction}
+              onAdvisor={handleAdvisor}
+              onToggleTheme={toggleTheme}
+          />
       </aside>
 
       <div
@@ -443,12 +450,12 @@ export default function Home() {
             </button>
             <Image
               src="/logo-digicode.PNG"
-              alt="Logo Digicode"
+              alt={`Logo ${BRAND_NAME}`}
               width={24}
               height={24}
               className="h-6 w-6 rounded-full object-cover md:hidden"
             />
-            <span className="text-base font-semibold leading-none sm:text-sm sm:font-medium">Digicode</span>
+            <span className="text-base font-semibold leading-none sm:text-sm sm:font-medium">{BRAND_NAME}</span>
           </div>
           <span className={`rounded-full px-3.5 py-1.5 text-[13px] sm:px-3 sm:py-1 sm:text-xs ${isLightMode ? "bg-zinc-100 text-zinc-600" : "bg-white/5"}`}>
             Service commercial
@@ -469,8 +476,10 @@ export default function Home() {
             isLightMode ? "border-zinc-200 bg-white/60 text-zinc-500" : "border-white/10 bg-[#1c1c1c] text-zinc-500"
           }`}
         >
-          <span>Digicode</span>
-          <span className="hidden sm:inline">WhatsApp: {CONTACT_WHATSAPP_LABEL}</span>
+          <span>{BRAND_NAME}</span>
+          <span className="hidden sm:inline">
+            Contact / paiement: {CONTACT_PHONE_DISPLAY} • {PAYMENT_METHODS_LABEL}
+          </span>
         </footer>
       </main>
     </div>

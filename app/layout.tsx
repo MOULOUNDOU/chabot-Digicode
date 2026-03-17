@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope, Sora } from "next/font/google";
+import { BRAND_NAME } from "@/lib/contact";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -13,9 +14,9 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "Digicode | Assistant Commercial",
+  title: `${BRAND_NAME} | Assistant Commercial`,
   description:
-    "Interface commerciale Digicode pour qualifier les besoins clients et soumettre la demande sur WhatsApp.",
+    `Interface commerciale ${BRAND_NAME} pour qualifier les besoins clients et soumettre la demande sur WhatsApp.`,
 };
 
 export const viewport: Viewport = {

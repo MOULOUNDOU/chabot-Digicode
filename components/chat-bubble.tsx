@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { BRAND_NAME } from "@/lib/contact";
 import { ChatRole } from "@/types/chat";
 
 interface ChatBubbleProps {
@@ -38,7 +39,7 @@ export function ChatBubble({ role, content, themeMode = "dark" }: ChatBubbleProp
           {isAssistant ? (
             <Image
               src="/logo-digicode.PNG"
-              alt="Digicode"
+              alt={BRAND_NAME}
               width={14}
               height={14}
               className="h-3.5 w-3.5 rounded-full object-cover"
@@ -46,7 +47,7 @@ export function ChatBubble({ role, content, themeMode = "dark" }: ChatBubbleProp
           ) : (
             <span className={`h-1.5 w-1.5 rounded-full ${isLightMode ? "bg-zinc-400" : "bg-zinc-300/80"}`} />
           )}
-          {isAssistant ? "Digicode" : "Vous"}
+          {isAssistant ? BRAND_NAME : "Vous"}
         </p>
         <p className="whitespace-pre-wrap">{content}</p>
       </div>
