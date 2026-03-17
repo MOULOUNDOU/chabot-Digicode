@@ -300,7 +300,7 @@ export default function Home() {
   }, [queuePrompt, closeMobileSidebar]);
 
   return (
-    <div className={`flex h-[100svh] overflow-hidden md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}>
+    <div className={`flex h-[100dvh] overflow-hidden md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}>
       <aside
         className={`hidden h-full min-h-0 w-[300px] flex-col border-r md:flex ${
           isLightMode ? "border-zinc-200 bg-white" : "border-white/10 bg-[#171717]"
@@ -316,31 +316,36 @@ export default function Home() {
         />
       </aside>
 
-      {mobileSidebarOpen ? (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <button
-            type="button"
-            aria-label="Fermer le menu"
-            onClick={closeMobileSidebar}
-            className="absolute inset-0 bg-black/45"
+      <div
+        aria-hidden={!mobileSidebarOpen}
+        className={`fixed inset-0 z-40 transition-opacity duration-300 md:hidden ${
+          mobileSidebarOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <button
+          type="button"
+          aria-label="Fermer le menu"
+          onClick={closeMobileSidebar}
+          className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ${
+            mobileSidebarOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <aside
+          className={`absolute inset-y-0 left-0 flex h-full w-[300px] max-w-[85vw] min-h-0 flex-col border-r shadow-2xl transition-transform duration-300 ease-out ${
+            mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } ${isLightMode ? "border-zinc-200 bg-white" : "border-white/10 bg-[#171717]"}`}
+        >
+          <SidebarContent
+            mobile
+            isLightMode={isLightMode}
+            onCloseMobileSidebar={closeMobileSidebar}
+            onNewChat={handleNewChat}
+            onQuickAction={handleQuickAction}
+            onAdvisor={handleAdvisor}
+            onToggleTheme={toggleTheme}
           />
-          <aside
-            className={`absolute inset-y-0 left-0 flex h-full w-[300px] max-w-[85vw] min-h-0 flex-col border-r shadow-2xl ${
-              isLightMode ? "border-zinc-200 bg-white" : "border-white/10 bg-[#171717]"
-            }`}
-          >
-            <SidebarContent
-              mobile
-              isLightMode={isLightMode}
-              onCloseMobileSidebar={closeMobileSidebar}
-              onNewChat={handleNewChat}
-              onQuickAction={handleQuickAction}
-              onAdvisor={handleAdvisor}
-              onToggleTheme={toggleTheme}
-            />
-          </aside>
-        </div>
-      ) : null}
+        </aside>
+      </div>
 
       <main className="flex h-full min-h-0 flex-1 flex-col">
         <header

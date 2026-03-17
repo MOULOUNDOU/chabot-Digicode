@@ -198,7 +198,7 @@ export function SalesChat({
             onChange={(event) => setInput(event.target.value)}
             maxLength={MAX_USER_MESSAGE_LENGTH}
             placeholder="Poser une question"
-            className={`h-11 flex-1 border-none bg-transparent px-1 text-sm outline-none ${
+            className={`h-11 flex-1 border-none bg-transparent px-1 text-[16px] outline-none sm:text-sm ${
               isLightMode ? "text-zinc-900 placeholder:text-zinc-400" : "text-zinc-100 placeholder:text-zinc-500"
             }`}
             disabled={isLoading}
@@ -254,7 +254,7 @@ export function SalesChat({
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {hasConversation ? (
         <>
-          <div className="mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-4 pb-36 pt-6 sm:px-6">
+          <div className="touch-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-4 pb-36 pt-6 sm:px-6">
             <div className="space-y-4 sm:space-y-5">
               {messages.map((message) => (
                 <ChatBubble key={message.id} role={message.role} content={message.content} themeMode={themeMode} />
@@ -308,7 +308,7 @@ export function SalesChat({
           </div>
         </>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-20 sm:px-6">
+        <div className="touch-scroll flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-4 pb-20 pt-16 sm:justify-center sm:px-6 sm:pt-0">
           <h1
             className={`text-center text-3xl font-semibold tracking-tight sm:text-5xl ${
               isLightMode ? "text-zinc-800" : "text-zinc-100"
@@ -326,7 +326,7 @@ export function SalesChat({
                 type="button"
                 onClick={() => submitMessage(`Je suis intéressé par ${prompt}.`)}
                 disabled={isLoading}
-                className={`rounded-full border px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`rounded-full border px-3 py-1.5 text-[13px] transition disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs ${
                   isLightMode
                     ? "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-800"
                     : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
