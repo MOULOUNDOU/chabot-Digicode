@@ -14,7 +14,9 @@ import { ChatApiResponse, LeadData, ServiceKey, StructuredAssistantOutput } from
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const FALLBACK_MODEL = "openai/gpt-4o-mini";
-const REQUEST_TIMEOUT_MS = 25000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_MAX_HISTORY_MESSAGES = 12;
+const DEFAULT_MAX_TOKENS = 420;
 const SONG_PAYMENT_QUESTION = "Avez-vous déjà l’argent pour lancer la création maintenant ?";
 const SONG_NO_PAYMENT_REPLY =
   "D’accord. Dès que vous avez l’argent, revenez lancer la commande et nous pourrons démarrer votre création.";
@@ -32,6 +34,36 @@ const PREMATURE_READY_REGEX =
   /(demande est pr[êe]te|commande est pr[êe]te|cliquez sur le bouton|soumettre.*whatsapp|soumission whatsapp)/i;
 const FINAL_CONFIRMATION_QUESTION =
   "Si tout est correct, répondez simplement : Je confirme, pour afficher le bouton de soumission.";
+
+function parseConfigInt(value: string | undefined, fallback: number, min: number, max: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(parsed, min), max);
+}
+
+function supportsResponseFormatJson(model: string): boolean {
+  // Avoid an expensive retry for models/providers that often reject response_format.
+  return /^(openai|google|anthropic|x-ai)\//i.test(model.trim());
+}
+
+function compactLeadForContext(lead: LeadData): Partial<LeadData> {
+  const compact: Partial<Record<keyof LeadData, string>> = {};
+
+  for (const [key, value] of Object.entries(lead) as [keyof LeadData, LeadData[keyof LeadData]][]) {
+    if (typeof value === "string" && value) {
+      compact[key] = value;
+    }
+  }
+
+  return compact as Partial<LeadData>;
+}
 
 function extractStringContent(content: unknown): string {
   if (typeof content === "string") {
@@ -196,6 +228,25 @@ function mentionsLiveTraining(text: string): boolean {
 export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL || FALLBACK_MODEL;
+  const requestTimeoutMs = parseConfigInt(
+    process.env.OPENROUTER_TIMEOUT_MS,
+    DEFAULT_REQUEST_TIMEOUT_MS,
+    4000,
+    60000,
+  );
+  const maxHistoryMessages = parseConfigInt(
+    process.env.OPENROUTER_MAX_HISTORY_MESSAGES,
+    DEFAULT_MAX_HISTORY_MESSAGES,
+    4,
+    36,
+  );
+  const maxTokens = parseConfigInt(
+    process.env.OPENROUTER_MAX_TOKENS,
+    DEFAULT_MAX_TOKENS,
+    180,
+    1200,
+  );
+  const useJsonModeByDefault = supportsResponseFormatJson(model);
   const origin = request.headers.get("origin") ?? "http://localhost:3000";
 
   if (!apiKey) {
@@ -227,6 +278,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Un message client est requis." }, { status: 400 });
   }
 
+  const modelMessages = messages.slice(-maxHistoryMessages);
+
   const contextPayload = {
     services: DIGICODE_SERVICES.map((service) => ({
       key: service.key,
@@ -236,27 +289,27 @@ export async function POST(request: Request) {
       highlights: service.highlights ?? "",
       priceType: service.priceType,
     })),
-    currentLead: lead,
+    currentLead: compactLeadForContext(lead),
     currentlyMissing: getMissingFields(lead),
     instruction: "Mets a jour lead_updates uniquement avec les nouvelles infos detectees.",
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
 
   try {
     // Keep prompt + structured business context in one request for deterministic extraction.
     const basePayload = {
       model,
-      temperature: 0.35,
-      max_tokens: 700,
+      temperature: 0.25,
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: buildSalesSystemPrompt() },
         {
           role: "system",
           content: `Contexte de conversation Digicode (JSON): ${JSON.stringify(contextPayload)}`,
         },
-        ...messages,
+        ...modelMessages,
       ],
     };
 
@@ -275,10 +328,11 @@ export async function POST(request: Request) {
         ),
       });
 
-    let openRouterResponse = await makeRequest(true);
+    let openRouterResponse = await makeRequest(useJsonModeByDefault);
     let responseErrorText = openRouterResponse.ok ? "" : cleanText(await openRouterResponse.text(), 300);
 
     if (
+      useJsonModeByDefault &&
       !openRouterResponse.ok &&
       openRouterResponse.status === 400 &&
       responseErrorText.toLowerCase().includes("response_format")

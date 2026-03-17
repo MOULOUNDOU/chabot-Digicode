@@ -17,6 +17,8 @@ import { ChatApiResponse, UiChatMessage } from "@/types/chat";
 const MAX_USER_MESSAGE_LENGTH = 700;
 const QUICK_PROMPTS = STARTER_SUGGESTIONS.slice(0, 6);
 
+type ThemeMode = "dark" | "light";
+
 export interface SidebarPrompt {
   id: number;
   text: string;
@@ -26,6 +28,7 @@ interface SalesChatProps {
   queuedPrompt?: SidebarPrompt | null;
   resetSignal?: number;
   onPromptConsumed?: () => void;
+  themeMode?: ThemeMode;
 }
 
 function createMessage(role: UiChatMessage["role"], content: string): UiChatMessage {
@@ -41,6 +44,7 @@ export function SalesChat({
   queuedPrompt = null,
   resetSignal = 0,
   onPromptConsumed,
+  themeMode = "dark",
 }: SalesChatProps) {
   const [messages, setMessages] = useState<UiChatMessage[]>([]);
   const [lead, setLead] = useState({ ...EMPTY_LEAD });
@@ -50,6 +54,8 @@ export function SalesChat({
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [serverReadyForWhatsapp, setServerReadyForWhatsapp] = useState(false);
+
+  const isLightMode = themeMode === "light";
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const hasConversation = messages.length > 0;
@@ -175,12 +181,14 @@ export function SalesChat({
     return (
       <form
         onSubmit={handleSubmit}
-        className={`rounded-[28px] border border-white/10 bg-[#2b2b2b] p-2 shadow-[0_10px_40px_rgba(0,0,0,0.35)] ${
-          isFloating ? "backdrop-blur" : ""
-        }`}
+        className={`rounded-[28px] border p-2 ${
+          isLightMode
+            ? "border-zinc-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.08)]"
+            : "border-white/10 bg-[#2b2b2b] shadow-[0_10px_40px_rgba(0,0,0,0.35)]"
+        } ${isFloating ? "backdrop-blur" : ""}`}
       >
         <div className="flex items-center gap-2">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-zinc-400">
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
             <Plus className="h-5 w-5" />
           </span>
 
@@ -190,7 +198,9 @@ export function SalesChat({
             onChange={(event) => setInput(event.target.value)}
             maxLength={MAX_USER_MESSAGE_LENGTH}
             placeholder="Poser une question"
-            className="h-11 flex-1 border-none bg-transparent px-1 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            className={`h-11 flex-1 border-none bg-transparent px-1 text-sm outline-none ${
+              isLightMode ? "text-zinc-900 placeholder:text-zinc-400" : "text-zinc-100 placeholder:text-zinc-500"
+            }`}
             disabled={isLoading}
           />
 
@@ -199,7 +209,11 @@ export function SalesChat({
               type="button"
               onClick={handleReset}
               title="Nouveau chat"
-              className="grid h-9 w-9 place-items-center rounded-full text-zinc-400 transition hover:bg-white/5 hover:text-white"
+              className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                isLightMode
+                  ? "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
+              }`}
             >
               <RefreshCw className="h-4.5 w-4.5" />
             </button>
@@ -210,7 +224,11 @@ export function SalesChat({
               type="button"
               onClick={handleCopySummary}
               title={copied ? "Résumé copié" : "Copier le résumé"}
-              className="grid h-9 w-9 place-items-center rounded-full text-zinc-400 transition hover:bg-white/5 hover:text-white"
+              className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                isLightMode
+                  ? "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
+              }`}
             >
               <ClipboardCopy className="h-4.5 w-4.5" />
             </button>
@@ -219,7 +237,11 @@ export function SalesChat({
           <button
             type="submit"
             disabled={isLoading || !cleanText(input, MAX_USER_MESSAGE_LENGTH)}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-500"
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed ${
+              isLightMode
+                ? "bg-zinc-900 text-white hover:bg-zinc-700 disabled:bg-zinc-400"
+                : "bg-white text-black hover:bg-zinc-200 disabled:bg-zinc-500"
+            }`}
           >
             {isLoading ? <LoaderCircle className="h-4.5 w-4.5 animate-spin" /> : <SendHorizonal className="h-4.5 w-4.5" />}
           </button>
@@ -235,12 +257,16 @@ export function SalesChat({
           <div className="mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-4 pb-36 pt-6 sm:px-6">
             <div className="space-y-4 sm:space-y-5">
               {messages.map((message) => (
-                <ChatBubble key={message.id} role={message.role} content={message.content} />
+                <ChatBubble key={message.id} role={message.role} content={message.content} themeMode={themeMode} />
               ))}
 
               {isLoading ? (
                 <div className="chat-bubble-enter flex justify-start">
-                  <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-[#2b2b2b] px-3 py-2 text-xs text-zinc-400">
+                  <div
+                    className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs ${
+                      isLightMode ? "border-zinc-200 bg-white text-zinc-500" : "border-white/10 bg-[#2b2b2b] text-zinc-400"
+                    }`}
+                  >
                     <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
                     En cours...
                   </div>
@@ -257,7 +283,13 @@ export function SalesChat({
             <div ref={chatEndRef} />
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-white/10 bg-gradient-to-t from-[#1f1f1f] via-[#1f1f1f] to-transparent px-4 pb-5 pt-6 sm:px-6">
+          <div
+            className={`pointer-events-none absolute inset-x-0 bottom-0 border-t px-4 pb-5 pt-6 sm:px-6 ${
+              isLightMode
+                ? "border-zinc-200 bg-gradient-to-t from-[#eef2f8] via-[#eef2f8] to-transparent"
+                : "border-white/10 bg-gradient-to-t from-[#1f1f1f] via-[#1f1f1f] to-transparent"
+            }`}
+          >
             <div className="pointer-events-auto mx-auto w-full max-w-4xl">
               {isWhatsappReady ? (
                 <div className="mb-3 flex justify-start">
@@ -277,7 +309,11 @@ export function SalesChat({
         </>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-20 sm:px-6">
-          <h1 className="text-center text-3xl font-semibold tracking-tight text-zinc-100 sm:text-5xl">
+          <h1
+            className={`text-center text-3xl font-semibold tracking-tight sm:text-5xl ${
+              isLightMode ? "text-zinc-800" : "text-zinc-100"
+            }`}
+          >
             Que voulez-vous acheter ?
           </h1>
 
@@ -290,7 +326,11 @@ export function SalesChat({
                 type="button"
                 onClick={() => submitMessage(`Je suis intéressé par ${prompt}.`)}
                 disabled={isLoading}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className={`rounded-full border px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  isLightMode
+                    ? "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-800"
+                    : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
+                }`}
               >
                 {prompt}
               </button>
