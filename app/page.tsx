@@ -9,7 +9,6 @@ import {
   Globe,
   GraduationCap,
   Menu,
-  MessageCircle,
   Moon,
   Music2,
   RefreshCw,
@@ -73,6 +72,19 @@ interface SidebarContentProps {
   onToggleTheme: () => void;
 }
 
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M13.601 2.326A7.853 7.853 0 0 0 8.0 0C3.582 0 0 3.582 0 8a7.95 7.95 0 0 0 1.145 4.125L0 16l4.003-1.12A7.95 7.95 0 0 0 8 16c4.418 0 8-3.582 8-8a7.853 7.853 0 0 0-2.399-5.674ZM8 14.559a6.53 6.53 0 0 1-3.325-.91l-.239-.142-2.375.664.634-2.315-.154-.245A6.532 6.532 0 0 1 1.44 8c0-3.616 2.944-6.56 6.56-6.56A6.56 6.56 0 0 1 14.56 8c0 3.616-2.944 6.56-6.56 6.56Zm3.594-4.94c-.197-.099-1.167-.576-1.347-.642-.181-.066-.312-.099-.443.099-.132.197-.509.642-.624.775-.115.132-.23.148-.427.049-.197-.099-.833-.307-1.587-.978-.586-.522-.982-1.166-1.098-1.363-.115-.197-.012-.304.087-.402.089-.088.197-.23.296-.345.099-.115.132-.197.197-.329.066-.132.033-.247-.016-.345-.05-.099-.443-1.067-.607-1.46-.159-.384-.32-.332-.443-.338l-.378-.007a.723.723 0 0 0-.525.247c-.181.197-.69.675-.69 1.647 0 .972.707 1.911.805 2.043.099.132 1.393 2.13 3.375 2.986.472.204.84.326 1.127.417.474.151.904.13 1.244.079.379-.057 1.167-.477 1.331-.937.165-.46.165-.855.115-.937-.049-.083-.18-.132-.378-.23Z" />
+    </svg>
+  );
+}
+
 function SidebarContent({
   mobile = false,
   isLightMode,
@@ -91,19 +103,12 @@ function SidebarContent({
             alt="Logo Digicode"
             width={24}
             height={24}
-            className="h-6 w-6 rounded-md object-cover"
+            className="h-6 w-6 rounded-full object-cover"
             priority
           />
           <span className="text-sm font-semibold">Digicode</span>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] ${
-              isLightMode ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/20 text-emerald-300"
-            }`}
-          >
-            En ligne
-          </span>
           <button
             type="button"
             onClick={onToggleTheme}
@@ -203,7 +208,7 @@ function SidebarContent({
             }`}
           >
             <span className="inline-flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-emerald-500" />
+              <WhatsAppIcon className="h-4 w-4 text-emerald-500" />
               WhatsApp
             </span>
             <span className={`text-xs ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>{CONTACT_WHATSAPP_LABEL}</span>
@@ -351,41 +356,41 @@ export default function Home() {
 
       <main className="flex h-full min-h-0 flex-1 flex-col">
         <header
-          className={`flex h-14 items-center justify-between border-b px-4 text-sm sm:px-6 ${
+          className={`flex h-16 items-center justify-between border-b px-4 text-[15px] sm:h-14 sm:px-6 sm:text-sm ${
             isLightMode ? "border-zinc-200 text-zinc-600" : "border-white/10 text-zinc-300"
           }`}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
               aria-label="Ouvrir le menu"
-              className={`grid h-8 w-8 place-items-center rounded-lg transition md:hidden ${
+              className={`grid h-10 w-10 place-items-center rounded-lg transition md:hidden ${
                 isLightMode ? "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" : "text-zinc-300 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <Menu className="h-4 w-4" />
+              <Menu className="h-5 w-5" />
             </button>
             <button
               type="button"
               onClick={toggleTheme}
               aria-label={isLightMode ? "Passer en mode sombre" : "Passer en mode clair"}
-              className={`grid h-8 w-8 place-items-center rounded-lg transition md:hidden ${
+              className={`grid h-10 w-10 place-items-center rounded-lg transition md:hidden ${
                 isLightMode ? "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" : "text-zinc-300 hover:bg-white/10 hover:text-white"
               }`}
             >
-              {isLightMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              {isLightMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </button>
             <Image
               src="/logo-digicode.PNG"
               alt="Logo Digicode"
-              width={18}
-              height={18}
-              className="h-[18px] w-[18px] rounded-sm object-cover md:hidden"
+              width={24}
+              height={24}
+              className="h-6 w-6 rounded-full object-cover md:hidden"
             />
-            <span>Digicode</span>
+            <span className="text-base font-semibold leading-none sm:text-sm sm:font-medium">Digicode</span>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs ${isLightMode ? "bg-zinc-100 text-zinc-600" : "bg-white/5"}`}>
+          <span className={`rounded-full px-3.5 py-1.5 text-[13px] sm:px-3 sm:py-1 sm:text-xs ${isLightMode ? "bg-zinc-100 text-zinc-600" : "bg-white/5"}`}>
             Service commercial
           </span>
         </header>
@@ -400,7 +405,7 @@ export default function Home() {
         </section>
 
         <footer
-          className={`hidden h-10 shrink-0 items-center justify-between border-t px-4 text-[11px] sm:flex sm:px-6 ${
+          className={`app-footer flex h-10 shrink-0 items-center justify-between border-t px-4 text-[11px] sm:px-6 ${
             isLightMode ? "border-zinc-200 bg-white/60 text-zinc-500" : "border-white/10 bg-[#1c1c1c] text-zinc-500"
           }`}
         >

@@ -32,7 +32,10 @@ body {
     position: fixed;
     inset: 0;
     width: 100%;
-    touch-action: none;
+  }
+
+  body:has(textarea:focus) .app-footer {
+    display: none !important;
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardCopy,
   LoaderCircle,
@@ -54,10 +54,13 @@ export function SalesChat({
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [serverReadyForWhatsapp, setServerReadyForWhatsapp] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   const isLightMode = themeMode === "light";
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const hasConversation = messages.length > 0;
 
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
@@ -152,6 +155,41 @@ export function SalesChat({
     handleReset();
   }, [resetSignal]);
 
+  useEffect(() => {
+    const textarea = textAreaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "44px";
+  }, []);
+
+  useEffect(() => {
+    if (!isInputFocused || typeof window === "undefined") {
+      setKeyboardInset(0);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) {
+      return;
+    }
+
+    const computeInset = () => {
+      const raw = window.innerHeight - (viewport.height + viewport.offsetTop);
+      setKeyboardInset(raw > 0 ? Math.round(raw) : 0);
+    };
+
+    computeInset();
+    viewport.addEventListener("resize", computeInset);
+    viewport.addEventListener("scroll", computeInset);
+
+    return () => {
+      viewport.removeEventListener("resize", computeInset);
+      viewport.removeEventListener("scroll", computeInset);
+    };
+  }, [isInputFocused]);
+
   const stabilizeViewportOnFocus = useCallback(() => {
     if (typeof window === "undefined") {
       return;
@@ -171,6 +209,25 @@ export function SalesChat({
     submitMessage(input);
   }
 
+  function autoResizeTextarea() {
+    const textarea = textAreaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 112)}px`;
+  }
+
+  function handleInputKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submitMessage(input);
+    }
+  }
+
+  const mobileComposerBottom = keyboardInset > 0 ? `${keyboardInset}px` : undefined;
+
   function handleReset() {
     setMessages([]);
     setLead({ ...EMPTY_LEAD });
@@ -179,6 +236,10 @@ export function SalesChat({
     setError("");
     setInput("");
     setCopied(false);
+    const textarea = textAreaRef.current;
+    if (textarea) {
+      textarea.style.height = "44px";
+    }
   }
 
   async function handleCopySummary() {
@@ -206,14 +267,34 @@ export function SalesChat({
             <Plus className="h-5 w-5" />
           </span>
 
-          <input
-            type="text"
+          <textarea
+            ref={textAreaRef}
             value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onFocus={stabilizeViewportOnFocus}
+            rows={1}
+            name="chat-message"
+            onChange={(event) => {
+              setInput(event.target.value);
+              autoResizeTextarea();
+            }}
+            onKeyDown={handleInputKeyDown}
+            onFocus={() => {
+              setIsInputFocused(true);
+              stabilizeViewportOnFocus();
+            }}
+            onBlur={() => {
+              setTimeout(() => {
+                setIsInputFocused(false);
+              }, 80);
+            }}
+            autoComplete="new-password"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            inputMode="text"
+            enterKeyHint="send"
             maxLength={MAX_USER_MESSAGE_LENGTH}
             placeholder="Poser une question"
-            className={`h-11 flex-1 border-none bg-transparent px-1 text-[16px] outline-none sm:text-sm ${
+            className={`h-11 max-h-28 flex-1 resize-none overflow-y-auto border-none bg-transparent px-1 py-2 text-[16px] leading-[1.35] outline-none sm:text-sm ${
               isLightMode ? "text-zinc-900 placeholder:text-zinc-400" : "text-zinc-100 placeholder:text-zinc-500"
             }`}
             disabled={isLoading}
@@ -269,7 +350,7 @@ export function SalesChat({
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {hasConversation ? (
         <>
-          <div className="mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-hidden px-4 pb-36 pt-6 sm:touch-scroll sm:overflow-y-auto sm:px-6">
+          <div className="touch-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-4 pb-44 pt-6 sm:px-6 sm:pb-36">
             <div className="space-y-4 sm:space-y-5">
               {messages.map((message) => (
                 <ChatBubble key={message.id} role={message.role} content={message.content} themeMode={themeMode} />
@@ -299,7 +380,8 @@ export function SalesChat({
           </div>
 
           <div
-            className={`pointer-events-none absolute inset-x-0 bottom-0 border-t px-4 pb-5 pt-6 sm:px-6 ${
+            style={mobileComposerBottom ? { bottom: mobileComposerBottom } : undefined}
+            className={`pointer-events-none fixed inset-x-0 bottom-10 z-20 border-t px-4 pb-2 pt-3 sm:absolute sm:inset-x-0 sm:bottom-0 sm:z-auto sm:px-6 sm:pb-5 sm:pt-6 ${
               isLightMode
                 ? "border-zinc-200 bg-gradient-to-t from-[#eef2f8] via-[#eef2f8] to-transparent"
                 : "border-white/10 bg-gradient-to-t from-[#1f1f1f] via-[#1f1f1f] to-transparent"
@@ -332,7 +414,18 @@ export function SalesChat({
             Que voulez-vous acheter ?
           </h1>
 
-          <div className="mt-7 w-full max-w-3xl">{renderComposer(false)}</div>
+          <div className="mt-7 hidden w-full max-w-3xl sm:block">{renderComposer(false)}</div>
+
+          <div
+            style={mobileComposerBottom ? { bottom: mobileComposerBottom } : undefined}
+            className={`pointer-events-none fixed inset-x-0 bottom-10 z-20 border-t px-4 pb-2 pt-3 sm:hidden ${
+              isLightMode
+                ? "border-zinc-200 bg-gradient-to-t from-[#eef2f8] via-[#eef2f8] to-transparent"
+                : "border-white/10 bg-gradient-to-t from-[#1f1f1f] via-[#1f1f1f] to-transparent"
+            }`}
+          >
+            <div className="pointer-events-auto mx-auto w-full max-w-4xl">{renderComposer(true)}</div>
+          </div>
 
           <div className="mt-4 flex w-full max-w-3xl flex-wrap justify-center gap-2">
             {QUICK_PROMPTS.map((prompt) => (

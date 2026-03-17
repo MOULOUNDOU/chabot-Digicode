@@ -17,6 +17,7 @@ const FALLBACK_MODEL = "openai/gpt-4o-mini";
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_MAX_HISTORY_MESSAGES = 12;
 const DEFAULT_MAX_TOKENS = 420;
+const DEFAULT_MAX_REPLY_CHARS = 320;
 const SONG_PAYMENT_QUESTION = "Avez-vous déjà l’argent pour lancer la création maintenant ?";
 const SONG_NO_PAYMENT_REPLY =
   "D’accord. Dès que vous avez l’argent, revenez lancer la commande et nous pourrons démarrer votre création.";
@@ -225,6 +226,26 @@ function mentionsLiveTraining(text: string): boolean {
   );
 }
 
+function enforceSingleQuestion(text: string): string {
+  let firstQuestionSeen = false;
+  let output = "";
+
+  for (const character of text) {
+    if (character === "?") {
+      if (firstQuestionSeen) {
+        output += ".";
+      } else {
+        firstQuestionSeen = true;
+        output += "?";
+      }
+    } else {
+      output += character;
+    }
+  }
+
+  return output.replace(/\s+/g, " ").replace(/\s+\./g, ".").trim();
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL || FALLBACK_MODEL;
@@ -245,6 +266,12 @@ export async function POST(request: Request) {
     DEFAULT_MAX_TOKENS,
     180,
     1200,
+  );
+  const maxReplyChars = parseConfigInt(
+    process.env.OPENROUTER_MAX_REPLY_CHARS,
+    DEFAULT_MAX_REPLY_CHARS,
+    180,
+    900,
   );
   const useJsonModeByDefault = supportsResponseFormatJson(model);
   const origin = request.headers.get("origin") ?? "http://localhost:3000";
@@ -388,8 +415,8 @@ export async function POST(request: Request) {
 
     const summary = cleanText(parsed?.summary, 2300) || buildLeadSummary(mergedLead);
     let reply =
-      cleanText(parsed?.reply, 1400) ||
-      cleanText(modelContent, 1400) ||
+      cleanText(parsed?.reply, 1000) ||
+      cleanText(modelContent, 1000) ||
       "Merci pour ces informations. Je continue à préparer votre demande.";
     let readyForWhatsapp =
       parsed?.ready_for_whatsapp === true
@@ -411,7 +438,8 @@ export async function POST(request: Request) {
         if (songMissingExcludingPayment.length === 0 && mergedLead.songPaymentReady !== "oui") {
           readyForWhatsapp = false;
           if (!reply.includes(SONG_PAYMENT_QUESTION)) {
-            reply = `${cleanText(reply, 900)} ${SONG_PAYMENT_QUESTION}`.trim();
+            const baseLength = Math.max(120, maxReplyChars - SONG_PAYMENT_QUESTION.length - 2);
+            reply = `${cleanText(reply, baseLength)} ${SONG_PAYMENT_QUESTION}`.trim();
           }
         }
       }
@@ -486,12 +514,19 @@ export async function POST(request: Request) {
       const whatsappGuidance =
         "Votre demande est prête. Cliquez sur le bouton de soumission WhatsApp pour l’envoyer à Digicode.";
       if (!reply.toLowerCase().includes("whatsapp")) {
-        reply = `${reply} ${whatsappGuidance}`.trim();
+        if (reply.length > maxReplyChars - whatsappGuidance.length - 2) {
+          reply = whatsappGuidance;
+        } else {
+          reply = `${reply} ${whatsappGuidance}`.trim();
+        }
       }
     }
 
+    // Keep the flow simple for clients: one question maximum per assistant reply.
+    reply = enforceSingleQuestion(reply);
+
     const response: ChatApiResponse = {
-      reply: cleanText(reply, 1400),
+      reply: cleanText(reply, maxReplyChars),
       detectedService: mergedLead.service || null,
       leadUpdates: effectiveLeadUpdates,
       summary,

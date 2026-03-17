@@ -14,7 +14,7 @@ export function ChatBubble({ role, content, themeMode = "dark" }: ChatBubbleProp
   return (
     <div className={`chat-bubble-enter flex py-1.5 ${isAssistant ? "justify-start" : "justify-end"}`}>
       <div
-        className={`max-w-[88%] rounded-3xl px-4 py-3 text-[16px] leading-relaxed sm:text-[16px] ${
+        className={`max-w-[88%] rounded-3xl px-4 py-3 text-[18px] leading-relaxed sm:text-[17px] ${
           isAssistant
             ? isLightMode
               ? "rounded-tl-md border border-zinc-200 bg-white text-zinc-800"

@@ -27,7 +27,8 @@ Puis renseignez:
 - `OPENROUTER_MODEL` : modèle OpenRouter (ex: `mistralai/mistral-small-2603`)
 - `OPENROUTER_TIMEOUT_MS` : timeout backend en ms (optionnel, défaut `15000`)
 - `OPENROUTER_MAX_HISTORY_MESSAGES` : nombre de messages envoyés au modèle (optionnel, défaut `12`)
-- `OPENROUTER_MAX_TOKENS` : taille max de réponse (optionnel, défaut `420`)
+- `OPENROUTER_MAX_TOKENS` : taille max de réponse du modèle (optionnel, défaut `260`)
+- `OPENROUTER_MAX_REPLY_CHARS` : limite finale de longueur affichée côté chat (optionnel, défaut `320`)
 - `NEXT_PUBLIC_WHATSAPP_NUMBER` : numéro WhatsApp cible (format international sans `+`)
 
 ## 3) Lancement local
@@ -62,7 +63,8 @@ Mettez à jour dans `.env.local`:
 OPENROUTER_MODEL=mistralai/mistral-small-2603
 OPENROUTER_TIMEOUT_MS=15000
 OPENROUTER_MAX_HISTORY_MESSAGES=12
-OPENROUTER_MAX_TOKENS=420
+OPENROUTER_MAX_TOKENS=260
+OPENROUTER_MAX_REPLY_CHARS=320
 ```
 
 Vous pouvez remplacer par tout modèle compatible Chat Completions sur OpenRouter.
