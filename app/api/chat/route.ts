@@ -1,0 +1,459 @@
+import { NextResponse } from "next/server";
+import {
+  buildLeadSummary,
+  getMissingFields,
+  isLeadReadyForWhatsapp,
+  isSongOrderBlockedByPayment,
+  mergeLeadData,
+} from "@/lib/lead";
+import { buildSalesSystemPrompt } from "@/lib/prompt";
+import { cleanText } from "@/lib/sanitize";
+import { detectServiceFromText, DIGICODE_SERVICES } from "@/lib/services";
+import { sanitizeLead, sanitizeLeadUpdates, sanitizeMessages } from "@/lib/validators";
+import { ChatApiResponse, LeadData, ServiceKey, StructuredAssistantOutput } from "@/types/chat";
+
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const FALLBACK_MODEL = "openai/gpt-4o-mini";
+const REQUEST_TIMEOUT_MS = 25000;
+const SONG_PAYMENT_QUESTION = "Avez-vous déjà l’argent pour lancer la création maintenant ?";
+const SONG_NO_PAYMENT_REPLY =
+  "D’accord. Dès que vous avez l’argent, revenez lancer la commande et nous pourrons démarrer votre création.";
+const SONG_DURATION_SENTENCE = "La création dure environ 10 minutes.";
+const SITE_RULE_SENTENCE =
+  "Le site vitrine coûte 100000 F, avec hébergement inclus et un nom de domaine gratuit.";
+const APP_RULE_SENTENCE =
+  "L’application web coûte 1500000 F, avec hébergement inclus et un nom de domaine gratuit.";
+const TRAINING_PACK_SENTENCE =
+  "Le pack de formation sur la création de vidéos avec Veo 3 coûte 2500 F. C’est une formation complète déjà enregistrée. Après paiement, nous vous envoyons directement le pack sur votre WhatsApp.";
+const TRAINING_NOT_LIVE_SENTENCE = "Ce n’est pas une formation en direct, c’est un pack déjà prêt.";
+const TRAINING_PAYMENT_FLOW_SENTENCE =
+  "L’envoi se fait après paiement et le pack sera transmis sur votre WhatsApp.";
+const PREMATURE_READY_REGEX =
+  /(demande est pr[êe]te|commande est pr[êe]te|cliquez sur le bouton|soumettre.*whatsapp|soumission whatsapp)/i;
+const FINAL_CONFIRMATION_QUESTION =
+  "Si tout est correct, répondez simplement : Je confirme, pour afficher le bouton de soumission.";
+
+function extractStringContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((chunk) => {
+        if (typeof chunk === "string") {
+          return chunk;
+        }
+
+        if (chunk && typeof chunk === "object" && "text" in chunk) {
+          return String((chunk as { text?: unknown }).text ?? "");
+        }
+
+        return "";
+      })
+      .join(" ")
+      .trim();
+  }
+
+  return "";
+}
+
+function parseStructuredOutput(rawContent: string): StructuredAssistantOutput | null {
+  const trimmed = rawContent.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parseCandidate = (candidate: string): StructuredAssistantOutput | null => {
+    try {
+      const parsed = JSON.parse(candidate) as StructuredAssistantOutput;
+      if (typeof parsed === "object" && parsed !== null && "reply" in parsed) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const direct = parseCandidate(trimmed);
+  if (direct) {
+    return direct;
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return parseCandidate(trimmed.slice(firstBrace, lastBrace + 1));
+  }
+
+  return null;
+}
+
+function sanitizeMissingFields(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input
+    .map((item) => cleanText(item, 80))
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function resolveDetectedService(modelValue: unknown, userMessage: string): ServiceKey | null {
+  if (typeof modelValue === "string") {
+    const trimmed = modelValue.trim() as ServiceKey;
+    if (
+      trimmed === "ai_video_training" ||
+      trimmed === "custom_song" ||
+      trimmed === "powerpoint_templates" ||
+      trimmed === "showcase_website" ||
+      trimmed === "web_application" ||
+      trimmed === "ad_video" ||
+      trimmed === "birthday_shoot" ||
+      trimmed === "product_shoot" ||
+      trimmed === "professional_cv"
+    ) {
+      return trimmed;
+    }
+  }
+
+  return detectServiceFromText(userMessage);
+}
+
+function inferSongPaymentReadyFromText(text: string): "oui" | "non" | "" {
+  const normalized = text.toLowerCase();
+  const hasYes = /\boui\b|\byes\b/.test(normalized);
+  const hasNo = /\bnon\b|\bno\b/.test(normalized);
+
+  if (
+    normalized.includes("pas l'argent") ||
+    normalized.includes("pas encore") ||
+    hasNo ||
+    normalized.includes("pas maintenant")
+  ) {
+    return "non";
+  }
+
+  if (
+    hasYes ||
+    normalized.includes("j'ai l'argent") ||
+    normalized.includes("jai l'argent") ||
+    normalized.includes("argent disponible")
+  ) {
+    return "oui";
+  }
+
+  return "";
+}
+
+function inferClientApprovalFromText(text: string): "oui" | "non" | "" {
+  const normalized = text.toLowerCase().trim();
+
+  if (
+    normalized === "oui" ||
+    normalized === "ok" ||
+    normalized === "d'accord" ||
+    normalized === "je confirme" ||
+    normalized === "je valide" ||
+    normalized === "validé" ||
+    normalized === "confirmer"
+  ) {
+    return "oui";
+  }
+
+  if (
+    normalized === "non" ||
+    normalized === "pas encore" ||
+    normalized === "attendez" ||
+    normalized === "je ne confirme pas" ||
+    normalized === "je veux modifier"
+  ) {
+    return "non";
+  }
+
+  return "";
+}
+
+function buildSongLeadWithoutPayment(lead: LeadData): LeadData {
+  return { ...lead, songPaymentReady: "oui" };
+}
+
+function mentionsLiveTraining(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return (
+    normalized.includes("formation en direct") ||
+    normalized.includes("cours en direct") ||
+    normalized.includes("session en direct") ||
+    normalized.includes("cours live") ||
+    normalized.includes("session live") ||
+    normalized.includes("programmer un cours")
+  );
+}
+
+export async function POST(request: Request) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL || FALLBACK_MODEL;
+  const origin = request.headers.get("origin") ?? "http://localhost:3000";
+
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "OPENROUTER_API_KEY est manquante côté serveur." },
+      { status: 500 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Corps de requête invalide." }, { status: 400 });
+  }
+
+  const rawMessages = (body as { messages?: unknown })?.messages;
+  const rawLead = (body as { lead?: unknown })?.lead;
+
+  const messages = sanitizeMessages(rawMessages);
+  const lead = sanitizeLead(rawLead);
+
+  if (!messages.length) {
+    return NextResponse.json({ error: "Aucun message valide à traiter." }, { status: 400 });
+  }
+
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+  if (!lastUserMessage) {
+    return NextResponse.json({ error: "Un message client est requis." }, { status: 400 });
+  }
+
+  const contextPayload = {
+    services: DIGICODE_SERVICES.map((service) => ({
+      key: service.key,
+      label: service.label,
+      priceLabel: service.priceLabel,
+      details: service.details,
+      highlights: service.highlights ?? "",
+      priceType: service.priceType,
+    })),
+    currentLead: lead,
+    currentlyMissing: getMissingFields(lead),
+    instruction: "Mets a jour lead_updates uniquement avec les nouvelles infos detectees.",
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    // Keep prompt + structured business context in one request for deterministic extraction.
+    const basePayload = {
+      model,
+      temperature: 0.35,
+      max_tokens: 700,
+      messages: [
+        { role: "system", content: buildSalesSystemPrompt() },
+        {
+          role: "system",
+          content: `Contexte de conversation Digicode (JSON): ${JSON.stringify(contextPayload)}`,
+        },
+        ...messages,
+      ],
+    };
+
+    const makeRequest = (useJsonMode: boolean) =>
+      fetch(OPENROUTER_URL, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": origin,
+          "X-Title": "Digicode Assistant",
+        },
+        body: JSON.stringify(
+          useJsonMode ? { ...basePayload, response_format: { type: "json_object" } } : basePayload,
+        ),
+      });
+
+    let openRouterResponse = await makeRequest(true);
+    let responseErrorText = openRouterResponse.ok ? "" : cleanText(await openRouterResponse.text(), 300);
+
+    if (
+      !openRouterResponse.ok &&
+      openRouterResponse.status === 400 &&
+      responseErrorText.toLowerCase().includes("response_format")
+    ) {
+      // Some models ignore JSON mode; retry once without response_format.
+      openRouterResponse = await makeRequest(false);
+      responseErrorText = openRouterResponse.ok ? "" : cleanText(await openRouterResponse.text(), 300);
+    }
+
+    clearTimeout(timeout);
+
+    if (!openRouterResponse.ok) {
+      return NextResponse.json(
+        {
+          error:
+            responseErrorText ||
+            "Impossible de joindre l'assistant commercial pour le moment. Réessayez dans quelques instants.",
+        },
+        { status: 502 },
+      );
+    }
+
+    const data = (await openRouterResponse.json()) as {
+      choices?: Array<{ message?: { content?: unknown } }>;
+    };
+
+    const modelContent = extractStringContent(data.choices?.[0]?.message?.content);
+    const parsed = parseStructuredOutput(modelContent);
+
+    // Merge model extraction into the current lead while preserving previous valid fields.
+    const detectedService = resolveDetectedService(parsed?.detected_service, lastUserMessage.content);
+    const leadUpdates = sanitizeLeadUpdates(parsed?.lead_updates);
+    const inferredSongPayment = inferSongPaymentReadyFromText(lastUserMessage.content);
+    const inferredClientApproval = inferClientApprovalFromText(lastUserMessage.content);
+    const effectiveLeadUpdates: Partial<LeadData> = { ...leadUpdates };
+
+    if (inferredSongPayment) {
+      effectiveLeadUpdates.songPaymentReady = inferredSongPayment;
+    }
+
+    if (inferredClientApproval) {
+      effectiveLeadUpdates.clientApproval = inferredClientApproval;
+    }
+
+    const mergedLead = mergeLeadData(lead, effectiveLeadUpdates, detectedService);
+
+    const missingFromModel = sanitizeMissingFields(parsed?.missing_fields);
+    let missingFields = getMissingFields(mergedLead);
+
+    if (missingFromModel.length > missingFields.length) {
+      missingFields = missingFromModel;
+    }
+
+    const summary = cleanText(parsed?.summary, 2300) || buildLeadSummary(mergedLead);
+    let reply =
+      cleanText(parsed?.reply, 1400) ||
+      cleanText(modelContent, 1400) ||
+      "Merci pour ces informations. Je continue à préparer votre demande.";
+    let readyForWhatsapp =
+      parsed?.ready_for_whatsapp === true
+        ? missingFields.length === 0
+        : isLeadReadyForWhatsapp(mergedLead);
+
+    if (mergedLead.service === "custom_song") {
+      if (!reply.includes(SONG_DURATION_SENTENCE)) {
+        reply = `${reply} ${SONG_DURATION_SENTENCE}`.trim();
+      }
+
+      if (isSongOrderBlockedByPayment(mergedLead)) {
+        reply = SONG_NO_PAYMENT_REPLY;
+        readyForWhatsapp = false;
+        missingFields = ["Disponibilité financière immédiate (réponse OUI requise pour lancer)"];
+      } else {
+        const songMissingExcludingPayment = getMissingFields(buildSongLeadWithoutPayment(mergedLead));
+
+        if (songMissingExcludingPayment.length === 0 && mergedLead.songPaymentReady !== "oui") {
+          readyForWhatsapp = false;
+          if (!reply.includes(SONG_PAYMENT_QUESTION)) {
+            reply = `${cleanText(reply, 900)} ${SONG_PAYMENT_QUESTION}`.trim();
+          }
+        }
+      }
+    }
+
+    if (mergedLead.service === "showcase_website" && !reply.includes(SITE_RULE_SENTENCE)) {
+      reply = `${reply} ${SITE_RULE_SENTENCE}`.trim();
+    }
+
+    if (mergedLead.service === "web_application" && !reply.includes(APP_RULE_SENTENCE)) {
+      reply = `${reply} ${APP_RULE_SENTENCE}`.trim();
+    }
+
+    if (mergedLead.service === "ai_video_training") {
+      if (mentionsLiveTraining(reply)) {
+        reply = TRAINING_PACK_SENTENCE;
+      }
+
+      if (!reply.includes(TRAINING_PACK_SENTENCE)) {
+        reply = `${reply} ${TRAINING_PACK_SENTENCE}`.trim();
+      }
+
+      if (!reply.includes("pas une formation en direct")) {
+        reply = `${reply} ${TRAINING_NOT_LIVE_SENTENCE}`.trim();
+      }
+
+      if (!reply.toLowerCase().includes("après paiement")) {
+        reply = `${reply} ${TRAINING_PAYMENT_FLOW_SENTENCE}`.trim();
+      }
+
+      readyForWhatsapp = missingFields.length === 0;
+
+      if (readyForWhatsapp) {
+        reply = `${reply} Cliquez sur le bouton de soumission WhatsApp pour finaliser le paiement et l’envoi du pack.`.trim();
+      } else {
+        const needsName = missingFields.includes("Nom du client");
+        const needsWhatsapp = missingFields.includes("Numéro WhatsApp");
+
+        if (needsName || needsWhatsapp) {
+          const askParts = [];
+          if (needsName) {
+            askParts.push("votre nom");
+          }
+          if (needsWhatsapp) {
+            askParts.push("votre numéro WhatsApp");
+          }
+          reply = `${reply} Pour continuer, indiquez ${askParts.join(" et ")}.`.trim();
+        }
+      }
+    }
+
+    if (mergedLead.clientApproval === "non") {
+      readyForWhatsapp = false;
+      reply = "D’accord. Indiquez ce que vous souhaitez modifier, puis je mettrai à jour votre demande.";
+    }
+
+    if (missingFields.length === 0 && mergedLead.clientApproval !== "oui") {
+      readyForWhatsapp = false;
+      if (!reply.toLowerCase().includes("je confirme")) {
+        reply = `${reply} ${FINAL_CONFIRMATION_QUESTION}`.trim();
+      }
+    }
+
+    if (!readyForWhatsapp && PREMATURE_READY_REGEX.test(reply)) {
+      const missingInfo = missingFields.length
+        ? `Il manque encore : ${missingFields.join(", ")}.`
+        : "Il manque encore votre confirmation finale avant validation.";
+      reply = `Merci. ${missingInfo}`;
+    }
+
+    if (readyForWhatsapp) {
+      const whatsappGuidance =
+        "Votre demande est prête. Cliquez sur le bouton de soumission WhatsApp pour l’envoyer à Digicode.";
+      if (!reply.toLowerCase().includes("whatsapp")) {
+        reply = `${reply} ${whatsappGuidance}`.trim();
+      }
+    }
+
+    const response: ChatApiResponse = {
+      reply: cleanText(reply, 1400),
+      detectedService: mergedLead.service || null,
+      leadUpdates: effectiveLeadUpdates,
+      summary,
+      missingFields,
+      readyForWhatsapp,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    clearTimeout(timeout);
+
+    const message =
+      error instanceof Error && error.name === "AbortError"
+        ? "La requête a expiré. Merci de réessayer."
+        : "Erreur serveur lors de la génération de la réponse commerciale.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
