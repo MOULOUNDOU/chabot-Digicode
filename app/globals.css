@@ -26,15 +26,6 @@ body {
   overscroll-behavior-y: none;
 }
 
-@media (max-width: 767px) {
-  html,
-  body {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-  }
-}
-
 body {
   background: radial-gradient(circle at 50% 15%, #262626 0%, #1f1f1f 50%);
   color: var(--ink);
