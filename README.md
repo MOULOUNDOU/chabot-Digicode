@@ -61,6 +61,19 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 
 Vous pouvez remplacer par tout modèle compatible Chat Completions sur OpenRouter.
 
+## Déploiement Netlify
+1. Poussez le projet sur GitHub (déjà fait si vous suivez ce dépôt).
+2. Dans Netlify: `Add new site` -> `Import an existing project`.
+3. Connectez GitHub et choisissez le repo `MOULOUNDOU/chabot-Digicode`.
+4. Build command: `npm run build`
+5. Variables d'environnement à ajouter dans Netlify:
+   - `OPENROUTER_API_KEY`
+   - `OPENROUTER_MODEL`
+   - `NEXT_PUBLIC_WHATSAPP_NUMBER`
+6. Deploy.
+
+Le fichier `netlify.toml` est déjà prêt pour Next.js.
+
 ## Architecture
 - `app/page.tsx` : page principale (bandeau + cartes + chatbot)
 - `components/sales-chat.tsx` : logique du chat et états locaux
