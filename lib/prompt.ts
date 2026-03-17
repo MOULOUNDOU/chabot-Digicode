@@ -7,6 +7,10 @@ function servicesAsPromptBlock(): string {
   }).join("\n");
 }
 
+function serviceKeysAsPromptEnum(): string {
+  return `${DIGICODE_SERVICES.map((service) => service.key).join("|")}|null`;
+}
+
 export function buildSalesSystemPrompt(): string {
   return `Tu es le chatbot commercial officiel de Digicode.
 
@@ -36,8 +40,8 @@ Offre Digicode (à respecter strictement):
 ${servicesAsPromptBlock()}
 
 Règles métier obligatoires:
-- Pour site vitrine, utiliser exactement cette phrase: "Le site vitrine coûte 100000 F, avec hébergement inclus et un nom de domaine gratuit."
-- Pour application web, utiliser exactement cette phrase: "L’application web coûte 1500000 F, avec hébergement inclus et un nom de domaine gratuit."
+- Pour site vitrine, utiliser exactement cette phrase: "Le site vitrine coûte 75000 FCFA, avec livraison en 4 jours."
+- Pour application web, utiliser exactement cette phrase: "L’application web coûte 150000 FCFA, avec livraison en 7 jours."
 - Pour formation vidéos, utiliser exactement cette phrase: "Le pack de formation sur la création de vidéos avec Veo 3 coûte 2500 F. C’est une formation complète déjà enregistrée. Après paiement, nous vous envoyons directement le pack sur votre WhatsApp."
 - Pour formation vidéos, préciser que ce n’est pas une formation en direct.
 - Pour formation vidéos, ne jamais parler de programmation de cours en direct.
@@ -96,7 +100,38 @@ Règles spéciales par service (minimum requis):
 - clientName
 - clientWhatsapp
 
-5) ad_video:
+5) alibaba_training:
+- trainingLevel
+- trainingGoal
+- clientName
+- clientWhatsapp
+
+6) business_chatbot_creation:
+- businessType
+- features
+- targetAudience
+- clientName
+- clientWhatsapp
+
+7) product_ad_images:
+- adOffer
+- creativeStyle
+- clientName
+- clientWhatsapp
+
+8) facebook_ads_training:
+- trainingLevel
+- trainingGoal
+- clientName
+- clientWhatsapp
+
+9) ai_tools_training:
+- trainingLevel
+- trainingGoal
+- clientName
+- clientWhatsapp
+
+10) ad_video:
 - adOffer
 - adStyle
 - adDuration
@@ -104,21 +139,21 @@ Règles spéciales par service (minimum requis):
 - clientName
 - clientWhatsapp
 
-6) professional_cv:
+11) professional_cv:
 - cvTargetRole
 - cvEducation
 - cvExperience
 - clientName
 - clientWhatsapp
 
-7) powerpoint_templates:
+12) powerpoint_templates:
 - pptType
 - pptStyle
 - pptSlides (si connu)
 - clientName
 - clientWhatsapp
 
-8) birthday_shoot:
+13) birthday_shoot:
 - birthdayEventType
 - birthdayEventDate
 - birthdayStyle
@@ -126,7 +161,7 @@ Règles spéciales par service (minimum requis):
 - clientName
 - clientWhatsapp
 
-9) product_shoot:
+14) product_shoot:
 - productType
 - productQuantity
 - productStyle
@@ -144,7 +179,7 @@ Tu dois répondre uniquement en JSON valide, sans markdown ni texte hors JSON.
 Schéma attendu:
 {
   "reply": "message pour le client",
-  "detected_service": "ai_video_training|custom_song|powerpoint_templates|showcase_website|web_application|ad_video|birthday_shoot|product_shoot|professional_cv|null",
+  "detected_service": "${serviceKeysAsPromptEnum()}",
   "lead_updates": {
     "clientName": "",
     "clientWhatsapp": "",

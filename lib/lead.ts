@@ -65,6 +65,11 @@ const SERVICE_BASE_REQUIRED_MAP: Partial<Record<ServiceKey, (keyof LeadData)[]>>
 };
 
 const SERVICE_REQUIRED_MAP: Partial<Record<ServiceKey, (keyof LeadData)[]>> = {
+  alibaba_training: ["trainingLevel", "trainingGoal"],
+  business_chatbot_creation: ["businessType", "features", "targetAudience"],
+  product_ad_images: ["adOffer", "creativeStyle"],
+  facebook_ads_training: ["trainingLevel", "trainingGoal"],
+  ai_tools_training: ["trainingLevel", "trainingGoal"],
   custom_song: [
     "songNames",
     "songMusicStyle",
@@ -334,7 +339,11 @@ export function buildLeadSummary(lead: LeadData): string {
     );
   }
 
-  if (lead.adOffer || lead.adStyle || lead.adDuration || lead.adReferences) {
+  if (lead.service === "product_ad_images" && (lead.adOffer || lead.creativeStyle || lead.description)) {
+    lines.push(
+      `Images pub produits: Produit=${lead.adOffer || "-"}; Style=${lead.creativeStyle || "-"}; Brief=${lead.description || "-"}`,
+    );
+  } else if (lead.adOffer || lead.adStyle || lead.adDuration || lead.adReferences) {
     lines.push(
       `Vidéo pub: Offre=${lead.adOffer || "-"}; Style=${lead.adStyle || "-"}; Durée=${lead.adDuration || "-"}; Références=${lead.adReferences || "-"}`,
     );
@@ -360,13 +369,21 @@ export function buildLeadSummary(lead: LeadData): string {
 
   if (lead.trainingLevel || lead.trainingGoal) {
     lines.push(
-      `Formation vidéos: Niveau=${lead.trainingLevel || "-"}; Objectif=${lead.trainingGoal || "-"}`,
+      `Formation: Niveau=${lead.trainingLevel || "-"}; Objectif=${lead.trainingGoal || "-"}`,
     );
   }
 
   if (lead.service === "ai_video_training") {
     lines.push("Offre formation: pack complet Veo 3 déjà enregistré.");
     lines.push("Mode de livraison: envoi sur WhatsApp après paiement.");
+  }
+
+  if (lead.service === "alibaba_training") {
+    lines.push("Bonus formation: un transitaire est offert à la fin de la formation.");
+  }
+
+  if (lead.service === "business_chatbot_creation") {
+    lines.push("Livraison annoncée: sous 3 jours.");
   }
 
   return lines.join("\n");

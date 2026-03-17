@@ -2,7 +2,12 @@ export type ChatRole = "user" | "assistant";
 
 export type ServiceKey =
   | "ai_video_training"
+  | "alibaba_training"
   | "custom_song"
+  | "business_chatbot_creation"
+  | "product_ad_images"
+  | "facebook_ads_training"
+  | "ai_tools_training"
   | "powerpoint_templates"
   | "showcase_website"
   | "web_application"

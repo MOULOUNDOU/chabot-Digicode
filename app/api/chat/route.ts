@@ -23,14 +23,22 @@ const SONG_NO_PAYMENT_REPLY =
   "D’accord. Dès que vous avez l’argent, revenez lancer la commande et nous pourrons démarrer votre création.";
 const SONG_DURATION_SENTENCE = "La création dure environ 10 minutes.";
 const SITE_RULE_SENTENCE =
-  "Le site vitrine coûte 100000 F, avec hébergement inclus et un nom de domaine gratuit.";
+  "Le site vitrine coûte 75000 FCFA, avec livraison en 4 jours.";
 const APP_RULE_SENTENCE =
-  "L’application web coûte 1500000 F, avec hébergement inclus et un nom de domaine gratuit.";
+  "L’application web coûte 150000 FCFA, avec livraison en 7 jours.";
 const TRAINING_PACK_SENTENCE =
   "Le pack de formation sur la création de vidéos avec Veo 3 coûte 2500 F. C’est une formation complète déjà enregistrée. Après paiement, nous vous envoyons directement le pack sur votre WhatsApp.";
 const TRAINING_NOT_LIVE_SENTENCE = "Ce n’est pas une formation en direct, c’est un pack déjà prêt.";
 const TRAINING_PAYMENT_FLOW_SENTENCE =
   "L’envoi se fait après paiement et le pack sera transmis sur votre WhatsApp.";
+const ALIBABA_TRAINING_SENTENCE =
+  "La formation Alibaba, achat en Chine et export depuis l’Afrique coûte 75000 F, avec un transitaire offert à la fin de la formation.";
+const CHATBOT_CREATION_SENTENCE =
+  "La création de chatbot pour entreprise coûte 15000 F, avec livraison sous 3 jours.";
+const FACEBOOK_ADS_TRAINING_SENTENCE =
+  "La formation Facebook Ads coûte 5000 F et vous aide à mieux lancer des campagnes publicitaires pour attirer des clients sur WhatsApp.";
+const AI_TOOLS_TRAINING_SENTENCE =
+  "La formation sur les outils d’IA pour gagner de l’argent coûte 10000 F.";
 const PREMATURE_READY_REGEX =
   /(demande est pr[êe]te|commande est pr[êe]te|cliquez sur le bouton|soumettre.*whatsapp|soumission whatsapp)/i;
 const FINAL_CONFIRMATION_QUESTION =
@@ -137,19 +145,11 @@ function sanitizeMissingFields(input: unknown): string[] {
 
 function resolveDetectedService(modelValue: unknown, userMessage: string): ServiceKey | null {
   if (typeof modelValue === "string") {
-    const trimmed = modelValue.trim() as ServiceKey;
-    if (
-      trimmed === "ai_video_training" ||
-      trimmed === "custom_song" ||
-      trimmed === "powerpoint_templates" ||
-      trimmed === "showcase_website" ||
-      trimmed === "web_application" ||
-      trimmed === "ad_video" ||
-      trimmed === "birthday_shoot" ||
-      trimmed === "product_shoot" ||
-      trimmed === "professional_cv"
-    ) {
-      return trimmed;
+    const trimmed = modelValue.trim();
+    const matchedService = DIGICODE_SERVICES.find((service) => service.key === trimmed);
+
+    if (matchedService) {
+      return matchedService.key;
     }
   }
 
@@ -489,6 +489,22 @@ export async function POST(request: Request) {
           reply = `${reply} Pour continuer, indiquez ${askParts.join(" et ")}.`.trim();
         }
       }
+    }
+
+    if (mergedLead.service === "alibaba_training" && !reply.includes(ALIBABA_TRAINING_SENTENCE)) {
+      reply = `${reply} ${ALIBABA_TRAINING_SENTENCE}`.trim();
+    }
+
+    if (mergedLead.service === "business_chatbot_creation" && !reply.includes(CHATBOT_CREATION_SENTENCE)) {
+      reply = `${reply} ${CHATBOT_CREATION_SENTENCE}`.trim();
+    }
+
+    if (mergedLead.service === "facebook_ads_training" && !reply.includes(FACEBOOK_ADS_TRAINING_SENTENCE)) {
+      reply = `${reply} ${FACEBOOK_ADS_TRAINING_SENTENCE}`.trim();
+    }
+
+    if (mergedLead.service === "ai_tools_training" && !reply.includes(AI_TOOLS_TRAINING_SENTENCE)) {
+      reply = `${reply} ${AI_TOOLS_TRAINING_SENTENCE}`.trim();
     }
 
     if (mergedLead.clientApproval === "non") {

@@ -20,8 +20,8 @@ export function ChatBubble({ role, content, themeMode = "dark" }: ChatBubbleProp
               ? "rounded-tl-md border border-zinc-200 bg-white text-zinc-800"
               : "rounded-tl-md border border-white/10 bg-[#2b2b2b] text-zinc-100"
             : isLightMode
-              ? "rounded-tr-md border border-indigo-200 bg-indigo-50 text-zinc-900"
-              : "rounded-tr-md border border-[#646d79]/50 bg-[#38414d] text-zinc-100"
+              ? "rounded-tr-md border border-zinc-300 bg-zinc-100 text-zinc-900"
+              : "rounded-tr-md border border-zinc-600/70 bg-zinc-700 text-zinc-100"
         }`}
       >
         <p
@@ -31,7 +31,7 @@ export function ChatBubble({ role, content, themeMode = "dark" }: ChatBubbleProp
                 ? "text-zinc-500"
                 : "text-zinc-400"
               : isLightMode
-                ? "text-indigo-500"
+                ? "text-zinc-500"
                 : "text-zinc-300"
           }`}
         >
@@ -44,7 +44,7 @@ export function ChatBubble({ role, content, themeMode = "dark" }: ChatBubbleProp
               className="h-3.5 w-3.5 rounded-full object-cover"
             />
           ) : (
-            <span className={`h-1.5 w-1.5 rounded-full ${isLightMode ? "bg-indigo-400" : "bg-zinc-300/80"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${isLightMode ? "bg-zinc-400" : "bg-zinc-300/80"}`} />
           )}
           {isAssistant ? "Digicode" : "Vous"}
         </p>

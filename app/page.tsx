@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   BriefcaseBusiness,
   FileText,
@@ -18,17 +18,18 @@ import {
   X,
 } from "lucide-react";
 import { SalesChat, SidebarPrompt } from "@/components/sales-chat";
+import { useVisualViewportHeight } from "@/hooks/use-visual-viewport-height";
 
 const QUICK_ACTIONS = [
   {
     label: "Site vitrine",
     icon: Globe,
-    prompt: "Je veux un site vitrine pour mon activité. Pouvez-vous me guider ?",
+    prompt: "Je veux un site vitrine à 75000 FCFA avec livraison en 4 jours. Pouvez-vous me guider ?",
   },
   {
     label: "Application web",
     icon: BriefcaseBusiness,
-    prompt: "Je souhaite développer une application web. Quels détails faut-il fournir ?",
+    prompt: "Je souhaite développer une application web à 150000 FCFA avec livraison en 7 jours. Quels détails faut-il fournir ?",
   },
   {
     label: "Formation vidéos (Veo 3)",
@@ -36,9 +37,36 @@ const QUICK_ACTIONS = [
     prompt: "Je suis intéressé par le pack de formation vidéos avec Veo 3 à 2500 F.",
   },
   {
+    label: "Formation Alibaba",
+    icon: ShoppingBag,
+    prompt:
+      "Je suis intéressé par la formation Alibaba, achat en Chine et export depuis l'Afrique à 75000 F, avec transitaire offert.",
+  },
+  {
     label: "Chanson personnalisée",
     icon: Music2,
     prompt: "Je veux une chanson personnalisée. Pouvez-vous m'aider à préparer la demande ?",
+  },
+  {
+    label: "Création de chatbot",
+    icon: BriefcaseBusiness,
+    prompt: "Je veux un chatbot pour mon entreprise à 15000 F, avec livraison sous 3 jours.",
+  },
+  {
+    label: "Création d'images pro",
+    icon: Film,
+    prompt: "Je veux des images professionnelles pour faire la publicité de mes produits.",
+  },
+  {
+    label: "Formation Facebook Ads",
+    icon: GraduationCap,
+    prompt:
+      "Je suis intéressé par la formation Facebook Ads à 5000 F pour apprendre à lancer des campagnes et attirer des clients sur WhatsApp.",
+  },
+  {
+    label: "Formation outils IA",
+    icon: Sparkles,
+    prompt: "Je veux une formation sur les outils d'IA pour gagner de l'argent à 10000 F.",
   },
   {
     label: "CV professionnel",
@@ -59,8 +87,55 @@ const QUICK_ACTIONS = [
 
 const CONTACT_WHATSAPP_LABEL = "+221 77 726 94 84";
 const CONTACT_WHATSAPP_LINK = "https://wa.me/221777269484";
+const THEME_STORAGE_KEY = "digicode-theme";
 
 type ThemeMode = "dark" | "light";
+
+function getThemeSnapshot(): ThemeMode {
+  if (typeof window === "undefined") {
+    return "dark";
+  }
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
+}
+
+function getThemeServerSnapshot(): ThemeMode {
+  return "dark";
+}
+
+function subscribeTheme(onStoreChange: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === THEME_STORAGE_KEY) {
+      onStoreChange();
+    }
+  };
+
+  const handleLocalThemeChange = () => {
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener("digicode-theme-change", handleLocalThemeChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener("digicode-theme-change", handleLocalThemeChange);
+  };
+}
+
+function persistTheme(nextTheme: ThemeMode) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  window.dispatchEvent(new Event("digicode-theme-change"));
+}
 
 interface SidebarContentProps {
   mobile?: boolean;
@@ -236,14 +311,11 @@ export default function Home() {
   const [queuedPrompt, setQueuedPrompt] = useState<SidebarPrompt | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") {
-      return "dark";
-    }
-
-    const storedTheme = window.localStorage.getItem("digicode-theme");
-    return storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
-  });
+  const themeMode = useSyncExternalStore(
+    subscribeTheme,
+    getThemeSnapshot,
+    getThemeServerSnapshot,
+  );
 
   const isLightMode = themeMode === "light";
 
@@ -260,27 +332,15 @@ export default function Home() {
     setQueuedPrompt(null);
   }, []);
 
+  useVisualViewportHeight();
+
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
-    window.localStorage.setItem("digicode-theme", themeMode);
   }, [themeMode]);
 
-  useEffect(() => {
-    if (!mobileSidebarOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [mobileSidebarOpen]);
-
   const toggleTheme = useCallback(() => {
-    setThemeMode((previous) => (previous === "dark" ? "light" : "dark"));
-  }, []);
+    persistTheme(themeMode === "dark" ? "light" : "dark");
+  }, [themeMode]);
 
   const closeMobileSidebar = useCallback(() => {
     setMobileSidebarOpen(false);
@@ -306,7 +366,7 @@ export default function Home() {
 
   return (
     <div
-      className={`fixed inset-0 flex h-[100svh] w-full overflow-hidden md:static md:h-screen ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}
+      className={`app-shell relative isolate flex min-h-0 w-full overflow-hidden ${isLightMode ? "bg-[#eef2f8] text-zinc-900" : "bg-[#1f1f1f] text-zinc-100"}`}
     >
       <aside
         className={`hidden h-full min-h-0 w-[300px] flex-col border-r md:flex ${
@@ -325,7 +385,7 @@ export default function Home() {
 
       <div
         aria-hidden={!mobileSidebarOpen}
-        className={`fixed inset-0 z-40 transition-opacity duration-300 md:hidden ${
+        className={`absolute inset-0 z-40 transition-opacity duration-300 md:hidden ${
           mobileSidebarOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
@@ -354,9 +414,9 @@ export default function Home() {
         </aside>
       </div>
 
-      <main className="flex h-full min-h-0 flex-1 flex-col">
+      <main className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <header
-          className={`flex h-16 items-center justify-between border-b px-4 text-[15px] sm:h-14 sm:px-6 sm:text-sm ${
+          className={`flex h-16 shrink-0 items-center justify-between border-b px-4 text-[15px] sm:h-14 sm:px-6 sm:text-sm ${
             isLightMode ? "border-zinc-200 text-zinc-600" : "border-white/10 text-zinc-300"
           }`}
         >
@@ -395,7 +455,7 @@ export default function Home() {
           </span>
         </header>
 
-        <section className="relative min-h-0 flex-1 overflow-hidden">
+        <section className="relative min-w-0 min-h-0 flex-1 overflow-hidden">
           <SalesChat
             queuedPrompt={queuedPrompt}
             resetSignal={resetSignal}
@@ -405,7 +465,7 @@ export default function Home() {
         </section>
 
         <footer
-          className={`app-footer flex h-10 shrink-0 items-center justify-between border-t px-4 text-[11px] sm:px-6 ${
+          className={`app-footer hidden shrink-0 items-center justify-between border-t px-4 py-2 text-[11px] md:flex md:px-6 md:py-2 ${
             isLightMode ? "border-zinc-200 bg-white/60 text-zinc-500" : "border-white/10 bg-[#1c1c1c] text-zinc-500"
           }`}
         >
