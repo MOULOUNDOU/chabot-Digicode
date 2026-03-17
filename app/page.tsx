@@ -288,7 +288,7 @@ function SidebarContent({
           >
             <span className="inline-flex items-center gap-2">
               <WhatsAppIcon className="h-4 w-4 text-emerald-500" />
-              WhatsApp / appel
+              WhatsApp
             </span>
             <span className={`text-xs ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>{CONTACT_PHONE_DISPLAY}</span>
           </a>
